@@ -1,43 +1,42 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Admin Dashboard</title>
+    <title>Module Admin</title>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0b0b0b; color: #fff; padding: 40px; }
-        .panel { background: #161616; padding: 20px; border-radius: 10px; border: 1px solid #333; margin-bottom: 20px; }
-        input { padding: 10px; border-radius: 5px; border: 1px solid #444; background: #222; color: #fff; }
-        button { padding: 10px 20px; border-radius: 5px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-ban { background: #ff4757; color: white; }
-        .btn-unban { background: #2ed573; color: white; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { padding: 12px; border-bottom: 1px solid #333; text-align: left; }
-        th { color: #888; font-size: 12px; text-transform: uppercase; }
-        .user-tag { color: #1e90ff; font-weight: bold; }
+        body { font-family: sans-serif; background: #121212; color: #fff; padding: 20px; }
+        .section { background: #1e1e1e; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #333; }
+        input { padding: 8px; border-radius: 4px; border: none; }
+        button { padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .red { background: #ff4d4d; color: #fff; }
+        .green { background: #4CAF50; color: #fff; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #333; }
+        th { color: #888; font-size: 12px; }
     </style>
 </head>
 <body>
 
-    <div class="panel">
+    <div class="section">
         <h2>Blacklist Controls</h2>
-        <input type="text" id="userInput" placeholder="Roblox Username">
-        <button class="btn-ban" onclick="setBlacklist(true)">Ban User</button>
-        <button class="btn-unban" onclick="setBlacklist(false)">Unban</button>
+        <input type="text" id="target" placeholder="Username">
+        <button class="red" onclick="ban(true)">BAN</button>
+        <button class="green" onclick="ban(false)">UNBAN</button>
     </div>
 
-    <div class="panel">
-        <h2>Script Usage Logs</h2>
+    <div class="section">
+        <h2>Live Logs (Who is using your script)</h2>
         <table>
             <thead>
                 <tr>
-                    <th>Username</th>
+                    <th>User</th>
                     <th>Game Name</th>
-                    <th>Creator ID</th>
+                    <th>Game Creator ID</th>
                     <th>Time</th>
                 </tr>
             </thead>
-            <tbody id="logList"></tbody>
+            <tbody id="logs"></tbody>
         </table>
     </div>
 
@@ -48,25 +47,24 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        function setBlacklist(val) {
-            const user = document.getElementById('userInput').value;
+        function ban(state) {
+            const user = document.getElementById('target').value;
             if(user) {
-                db.ref('blacklist/' + user).set(val);
-                alert("Updated: " + user);
+                db.ref('blacklist/' + user).set(state);
+                alert("Updated " + user);
             }
         }
 
-        // Listen for logs
-        db.ref('logs').limitToLast(20).on('value', (snap) => {
-            const list = document.getElementById('logList');
+        db.ref('logs').limitToLast(15).on('value', (snap) => {
+            const list = document.getElementById('logs');
             list.innerHTML = "";
             snap.forEach((child) => {
                 const data = child.val();
                 list.innerHTML = `<tr>
-                    <td class="user-tag">${data.username}</td>
+                    <td style="color:#00aaff">${data.username}</td>
                     <td>${data.gameName}</td>
-                    <td>${data.creatorId}</td>
-                    <td style="color: #666;">${data.time}</td>
+                    <td>${data.creator}</td>
+                    <td style="color:#666">${data.time}</td>
                 </tr>` + list.innerHTML;
             });
         });
