@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Roblox Admin Dashboard</title>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1a1a1a; color: white; text-align: center; padding: 50px; }
+        .container { background: #2a2a2a; display: inline-block; padding: 30px; border-radius: 15px; border: 1px solid #444; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        input { padding: 12px; width: 250px; border-radius: 5px; border: none; margin-bottom: 20px; font-size: 16px; }
+        button { padding: 12px 25px; font-weight: bold; cursor: pointer; border-radius: 5px; border: none; transition: 0.3s; margin: 5px; }
+        .btn-ban { background-color: #ff4d4d; color: white; }
+        .btn-ban:hover { background-color: #ff1a1a; }
+        .btn-unban { background-color: #4CAF50; color: white; }
+        .btn-unban:hover { background-color: #45a049; }
+        #status { margin-top: 20px; color: #aaa; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Script Control Panel</h1>
+        <p>Enter the exact username to manage access:</p>
+        <input type="text" id="username" placeholder="Roblox Username...">
+        <br>
+        <button class="btn-ban" onclick="updateStatus(true)">BLACKLIST USER</button>
+        <button class="btn-unban" onclick="updateStatus(false)">REMOVE USER</button>
+        <div id="status">Waiting for input...</div>
+    </div>
+
+    <script>
+        // Your Database Configuration
+        const firebaseConfig = {
+            databaseURL: "https://robloxadmin-e98ad-default-rtdb.asia-southeast1.firebasedatabase.app",
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        function updateStatus(isBanned) {
+            const user = document.getElementById('username').value;
+            const statusText = document.getElementById('status');
+
+            if(user.trim() !== "") {
+                statusText.innerText = "Updating database...";
+                
+                // This targets the 'blacklist' folder in your database
+                db.ref('blacklist/' + user).set(isBanned)
+                .then(() => {
+                    statusText.innerText = "Successfully updated " + user + "!";
+                    statusText.style.color = isBanned ? "#ff4d4d" : "#4CAF50";
+                })
+                .catch((error) => {
+                    statusText.innerText = "Error: " + error.message;
+                    statusText.style.color = "orange";
+                });
+            } else {
+                alert("Please enter a username first.");
+            }
+        }
+    </script>
+</body>
+</html>
