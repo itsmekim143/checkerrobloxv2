@@ -1,67 +1,105 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Direct Admin Console</title>
+    <meta charset="UTF-8">
+    <title>GUI Control Panel</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: sans-serif; background: #111; color: #eee; padding: 20px; }
-        .box { background: #222; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #444; }
-        input { padding: 8px; background: #000; color: #fff; border: 1px solid #555; width: 200px; }
-        button { padding: 8px 12px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; }
-        .red { background: #ff4d4d; color: #fff; }
-        .green { background: #2ecc71; color: #fff; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 10px; border-bottom: 1px solid #333; text-align: left; }
-        .sys-log { color: #ff4d4d; font-weight: bold; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f0f12; color: #ffffff; padding: 30px; }
+        .container { max-width: 1000px; margin: auto; }
+        .card { background: #1c1c21; padding: 25px; border-radius: 12px; border: 1px solid #333; margin-bottom: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h1, h2 { color: #00a2ff; margin-top: 0; }
+        .input-box { display: flex; gap: 10px; margin-bottom: 10px; }
+        input { flex: 1; padding: 12px; border-radius: 6px; border: 1px solid #444; background: #000; color: #fff; }
+        button { padding: 12px 20px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-block { background: #ff4757; color: white; }
+        .btn-allow { background: #2ed573; color: white; }
+        .btn-block:hover { background: #ff6b81; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #333; }
+        th { color: #888; font-size: 12px; text-transform: uppercase; }
+        .status-badge { padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .kick { background: rgba(255, 71, 87, 0.2); color: #ff4757; }
+        .active { background: rgba(46, 213, 115, 0.2); color: #2ed573; }
     </style>
 </head>
 <body>
 
-    <div class="box">
-        <h2>Blacklist Control</h2>
-        <input type="text" id="idInput" placeholder="User, GameID, or CreatorID">
-        <button class="red" onclick="save(true)">BLOCK</button>
-        <button class="green" onclick="save(false)">ALLOW</button>
+<div class="container">
+    <h1>Management Dashboard</h1>
+
+    <div class="card">
+        <h2>Security Control</h2>
+        <p style="color: #888;">Enter <b>Place ID</b> (from URL), <b>Universe ID</b>, or <b>Username</b>.</p>
+        <div class="input-box">
+            <input type="text" id="targetInput" placeholder="Enter ID or Name...">
+            <button class="btn-block" onclick="updateBlacklist(true)">BLOCK</button>
+            <button class="btn-allow" onclick="updateBlacklist(null)">UNBLOCK</button>
+        </div>
     </div>
 
-    <div class="box">
-        <h2>Live Logs</h2>
+    <div class="card">
+        <h2>Live Activity Logs</h2>
         <table>
-            <thead><tr><th>Target</th><th>Game</th><th>Status</th><th>Time</th></tr></thead>
-            <tbody id="logs"></tbody>
+            <thead>
+                <tr>
+                    <th>User / System</th>
+                    <th>Game & Creator</th>
+                    <th>Status</th>
+                    <th>Time</th>
+                </tr>
+            </thead>
+            <tbody id="log-body">
+                </tbody>
         </table>
     </div>
+</div>
 
 <script>
-    // Simplified Config - No API Key needed if Rules are public
-    const config = {
+    // Configuration
+    const firebaseConfig = {
         databaseURL: "https://robloxadmin-e98ad-default-rtdb.asia-southeast1.firebasedatabase.app"
     };
-    firebase.initializeApp(config);
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    function save(status) {
-        const val = document.getElementById('idInput').value;
-        if(!val) return;
-        db.ref('blacklist/' + val).set(status);
-        alert("Updated " + val);
+    // Function to add/remove from blacklist
+    function updateBlacklist(state) {
+        const target = document.getElementById('targetInput').value.trim();
+        if (target) {
+            db.ref('blacklist/' + target).set(state)
+                .then(() => {
+                    alert("Database Updated: " + target);
+                    document.getElementById('targetInput').value = "";
+                })
+                .catch(err => alert("Error: Check your Firebase Rules!"));
+        }
     }
 
-    db.ref('logs').limitToLast(15).on('value', (snap) => {
-        const tbody = document.getElementById('logs');
-        tbody.innerHTML = "";
-        snap.forEach(child => {
-            const d = child.val();
-            const isSys = d.username === "SYSTEM_PROTECTION";
-            tbody.innerHTML = `<tr>
-                <td class="${isSys ? 'sys-log' : ''}">${d.username}</td>
-                <td>${d.gameName}</td>
-                <td>${isSys ? 'MASS KICK' : 'JOINED'}</td>
-                <td>${d.time}</td>
-            </tr>` + tbody.innerHTML;
+    // Real-time listener for logs
+    db.ref('logs').limitToLast(15).on('value', (snapshot) => {
+        const logBody = document.getElementById('log-body');
+        logBody.innerHTML = "";
+        const items = [];
+        
+        snapshot.forEach(child => { items.push(child.val()); });
+        items.reverse().forEach(data => {
+            const isKick = data.username === "SYSTEM_PROTECTION";
+            const row = `
+                <tr>
+                    <td style="color: ${isKick ? '#ff4757' : '#00a2ff'}; font-weight: bold;">${data.username}</td>
+                    <td>${data.gameName}<br><small style="color: #666">Creator: ${data.creator}</small></td>
+                    <td><span class="status-badge ${isKick ? 'kick' : 'active'}">${isKick ? 'MASS KICK' : 'AUTHORIZED'}</span></td>
+                    <td style="color: #888">${data.time}</td>
+                </tr>
+            `;
+            logBody.innerHTML += row;
         });
     });
 </script>
+
 </body>
 </html>
