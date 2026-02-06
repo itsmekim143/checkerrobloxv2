@@ -1,91 +1,110 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Advanced Admin Dashboard</title>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
+    <title>Admin Dashboard Fix</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+    
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0b0b0b; color: #fff; padding: 30px; }
-        .card { background: #161616; padding: 20px; border-radius: 10px; border: 1px solid #333; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        h2 { color: #00aaff; margin-top: 0; }
-        input { padding: 10px; border-radius: 5px; border: 1px solid #444; background: #222; color: #fff; width: 250px; }
-        button { padding: 10px 15px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; transition: 0.3s; margin-left: 5px; }
-        .btn-ban { background: #ff4757; color: white; }
-        .btn-unban { background: #2ed573; color: white; }
-        .btn-ban:hover { background: #ff6b81; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0b0b0b; color: #fff; padding: 20px; }
+        .card { background: #161616; padding: 20px; border-radius: 8px; border: 1px solid #333; margin-bottom: 20px; }
+        .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .online { background-color: #2ed573; }
+        .offline { background-color: #ff4757; }
+        input { padding: 10px; border-radius: 4px; border: 1px solid #444; background: #222; color: #fff; width: 200px; }
+        button { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin: 5px; }
+        .btn-red { background: #ff4757; color: white; }
+        .btn-green { background: #2ed573; color: white; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { padding: 12px; border-bottom: 1px solid #333; text-align: left; }
-        th { color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
-        .status-shutdown { color: #ff4757; font-weight: bold; }
-        .status-active { color: #2ed573; }
+        th { color: #888; font-size: 12px; }
+        #debug-log { color: #ff9f43; font-size: 12px; margin-top: 10px; }
     </style>
 </head>
 <body>
 
     <div class="card">
-        <h2>ID Blacklist Management</h2>
-        <p style="color: #888; font-size: 13px;">Enter a <b>Game ID</b>, <b>Creator ID</b>, or <b>Group ID</b> to block the script.</p>
-        <input type="text" id="targetId" placeholder="Enter ID here...">
-        <button class="btn-ban" onclick="updateBlacklist(true)">BLOCK ID</button>
-        <button class="btn-unban" onclick="updateBlacklist(false)">ALLOW ID</button>
+        <h2>Connection Status: <span id="conn-text">Checking...</span> <span id="dot" class="status-dot offline"></span></h2>
+        <div id="debug-log">Waiting for Firebase...</div>
     </div>
 
     <div class="card">
-        <h2>Live Security Logs</h2>
+        <h3>ID / Username Control</h3>
+        <input type="text" id="target" placeholder="Enter ID or Name">
+        <button class="btn-red" onclick="setBlacklist(true)">BLOCK</button>
+        <button class="btn-green" onclick="setBlacklist(false)">UNBLOCK</button>
+    </div>
+
+    <div class="card">
+        <h3>Live Logs</h3>
         <table>
             <thead>
                 <tr>
-                    <th>User/Event</th>
+                    <th>Target</th>
                     <th>Game Name</th>
                     <th>Creator ID</th>
-                    <th>Status</th>
                     <th>Time</th>
                 </tr>
             </thead>
-            <tbody id="logData">
-                </tbody>
+            <tbody id="log-list"></tbody>
         </table>
     </div>
 
     <script>
+        // REPLACE THESE WITH YOUR ACTUAL FIREBASE SETTINGS
         const firebaseConfig = {
+            apiKey: "YOUR_API_KEY_HERE", 
             databaseURL: "https://robloxadmin-e98ad-default-rtdb.asia-southeast1.firebasedatabase.app",
         };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
 
-        // Function to Block/Allow IDs (Game, Group, or Creator)
-        function updateBlacklist(status) {
-            const id = document.getElementById('targetId').value;
-            if(id) {
-                // Sets the ID as true/false in the blacklist folder
-                db.ref('blacklist/' + id).set(status);
-                alert("ID " + id + (status ? " has been blocked." : " has been allowed."));
-                document.getElementById('targetId').value = "";
-            }
-        }
-
-        // Real-time listener for logs
-        db.ref('logs').limitToLast(15).on('value', (snapshot) => {
-            const logTable = document.getElementById('logData');
-            logTable.innerHTML = ""; 
+        // Initialize Firebase
+        try {
+            firebase.initializeApp(firebaseConfig);
+            const db = firebase.database();
+            const debug = document.getElementById('debug-log');
             
-            snapshot.forEach((childSnapshot) => {
-                const data = childSnapshot.val();
-                const isShutdown = data.username === "SYSTEM_PROTECTION" || data.time.includes("SHUTDOWN");
-                
-                const row = `<tr>
-                    <td style="color: ${isShutdown ? '#ff4757' : '#1e90ff'}; font-weight: bold;">${data.username}</td>
-                    <td>${data.gameName}</td>
-                    <td>${data.creator}</td>
-                    <td class="${isShutdown ? 'status-shutdown' : 'status-active'}">
-                        ${isShutdown ? 'BLOCKED' : 'ACTIVE'}
-                    </td>
-                    <td style="color: #666;">${data.time}</td>
-                </tr>`;
-                logTable.innerHTML = row + logTable.innerHTML; 
+            // Connection Check
+            db.ref(".info/connected").on("value", (snap) => {
+                if (snap.val() === true) {
+                    document.getElementById('conn-text').innerText = "Connected";
+                    document.getElementById('dot').className = "status-dot online";
+                    debug.innerText = "✅ Successfully connected to Firebase";
+                } else {
+                    document.getElementById('conn-text').innerText = "Disconnected";
+                    document.getElementById('dot').className = "status-dot offline";
+                    debug.innerText = "❌ Connection lost. Check your API Key and Rules.";
+                }
             });
-        });
+
+            // Blacklist Function
+            window.setBlacklist = function(status) {
+                const val = document.getElementById('target').value;
+                if(val) {
+                    db.ref('blacklist/' + val).set(status)
+                        .then(() => alert("Updated " + val))
+                        .catch(e => alert("Error: " + e.message));
+                }
+            };
+
+            // Logs Listener
+            db.ref('logs').limitToLast(15).on('value', (snap) => {
+                const list = document.getElementById('log-list');
+                list.innerHTML = "";
+                snap.forEach((child) => {
+                    const data = child.val();
+                    const row = `<tr>
+                        <td style="color:#1e90ff"><b>${data.username}</b></td>
+                        <td>${data.gameName}</td>
+                        <td>${data.creator}</td>
+                        <td style="color:#888">${data.time}</td>
+                    </tr>`;
+                    list.innerHTML = row + list.innerHTML;
+                });
+            });
+
+        } catch (e) {
+            document.getElementById('debug-log').innerText = "FATAL ERROR: " + e.message;
+        }
     </script>
 </body>
 </html>
