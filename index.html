@@ -40,6 +40,16 @@
     </div>
 
     <div class="card">
+        <h2>Global Announcement</h2>
+        <p style="color: #888;">Type a message to send to all active servers.</p>
+        <div class="input-box">
+            <input type="text" id="announcementText" placeholder="Enter message...">
+            <button class="btn-allow" onclick="sendAnnouncement()">SEND MESSAGE</button>
+            <button class="btn-block" onclick="clearAnnouncement()">CLEAR</button>
+        </div>
+    </div>
+
+    <div class="card">
         <h2>Live Activity Logs</h2>
         <table>
             <thead>
@@ -66,7 +76,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // Function to add/remove from blacklist
+    // Security Blacklist Functions
     function updateBlacklist(state) {
         const target = document.getElementById('targetInput').value.trim();
         if (target) {
@@ -77,6 +87,22 @@
                 })
                 .catch(err => alert("Error: Check your Firebase Rules!"));
         }
+    }
+
+    // Global Announcement Functions
+    function sendAnnouncement() {
+        const msg = document.getElementById('announcementText').value;
+        if(msg) {
+            db.ref('GlobalMessage').set(msg)
+                .then(() => alert("Announcement Sent!"))
+                .catch(err => console.error(err));
+        }
+    }
+
+    function clearAnnouncement() {
+        db.ref('GlobalMessage').set("")
+            .then(() => alert("Announcement Cleared"));
+        document.getElementById('announcementText').value = "";
     }
 
     // Real-time listener for logs
@@ -100,6 +126,9 @@
         });
     });
 </script>
+
+</body>
+</html>
 
 </body>
 </html>
